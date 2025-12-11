@@ -13,7 +13,7 @@ from livekit.agents import (
     Agent,
 )
 from livekit.plugins import openai, silero
-from tools import create_mode_tools
+from tools import create_mode_tools, create_quiz_tools
 
 logger = logging.getLogger(__name__)
 
@@ -45,21 +45,43 @@ async def entrypoint(ctx: JobContext):
     logger.info("Setting up voice pipeline (STT, LLM, TTS)...")
 
     # Create tools for mode switching between quiz/table/blank views
-    tools = create_mode_tools(ctx.room)
-    logger.info(f"Created {len(tools)} tools for mode control")
+    mode_tools = create_mode_tools(ctx.room)
+    logger.info(f"Created {len(mode_tools)} tools for mode control")
+
+    # Create tools for quiz interaction
+    quiz_tools = create_quiz_tools(ctx.room)
+    logger.info(f"Created {len(quiz_tools)} tools for quiz control")
+
+    # Combine all tools
+    all_tools = mode_tools + quiz_tools
+    logger.info(f"Total tools available: {len(all_tools)}")
 
     # Create agent with instructions + tools
     agent = Agent(
         instructions=(
-            "You are a helpful voice assistant that can control the on-screen UI.\n"
-            "- When the user asks to see a quiz or trivia, call the show_quiz tool.\n"
+            "You are a helpful voice assistant that can control the on-screen UI and interact with quizzes.\n"
+            "\n"
+            "UI Mode Control:\n"
+            "- When the user asks to see a quiz or trivia, call the show_quiz tool first, then request_quiz to load it.\n"
             "- When the user asks to see a table, call the show_table tool.\n"
             "- When the user asks to clear or hide everything, call the show_blank tool.\n"
             "- Use get_current_mode if you need to verify what is displayed.\n"
+            "\n"
+            "Quiz Interaction:\n"
+            "- Use request_quiz to load and start a quiz when the user wants to play.\n"
+            "- IMPORTANT: When a quiz is active, ALWAYS call get_quiz_state first to see the current question before responding to the user. This ensures you know exactly what question is displayed.\n"
+            "- When the user says they want to select an option (like 'I choose A' or 'select B'), use select_quiz_option with the option letter.\n"
+            "- When the user wants to move to the next question, use next_quiz_question. After calling next_quiz_question, the tool will return the new question information - use that to confirm what question is now displayed.\n"
+            "- After any quiz action (selecting option, moving to next question), verify the current state by checking the tool response or calling get_quiz_state if needed.\n"
+            "- Always read the current question and options to the user when they ask about the quiz or when a new question appears.\n"
+            "\n"
+            "General:\n"
             "Wait for the user to speak (they press Push-to-Talk) before responding. "
-            "Speak briefly, describe any UI changes you make, and stay conversational."
+            "Speak briefly, describe any UI changes you make, and stay conversational. "
+            "When a quiz is active, always be aware of which question number is currently displayed and what the question text is. "
+            "If you notice any inconsistencies (like the same question appearing twice), call get_quiz_state to verify the actual state."
         ),
-        tools=tools,
+        tools=all_tools,
     )
 
     # Create agent session with STT, LLM, TTS, and VAD

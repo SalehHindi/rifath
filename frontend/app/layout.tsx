@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ModeProvider } from "@/contexts/ModeContext";
+import { QuizProvider } from "@/contexts/QuizContext";
 
 export const metadata: Metadata = {
   title: "LiveKit Voice Agent",
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ModeProvider>{children}</ModeProvider>
+        <ModeProvider>
+          <QuizProvider>{children}</QuizProvider>
+        </ModeProvider>
       </body>
     </html>
   );
