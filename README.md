@@ -14,7 +14,62 @@ This project demonstrates bidirectional communication between a voice AI agent a
 - 🎨 **Visual Feedback**: Animated option selection with correct/incorrect indicators
 - 🔄 **State Synchronization**: Quiz state shared between frontend and agent
 
+## Screenshot
+
+![LiveKit Voice Agent Application](./screenshot.png)
+
 ## Architecture
+
+The application follows a client-server architecture with real-time bidirectional communication:
+
+```mermaid
+graph TB
+    subgraph "Frontend (Next.js)"
+        UI[React UI Components]
+        PTT[Push-to-Talk Button]
+        Quiz[Quiz Component]
+        Table[Table Component]
+        Blank[Blank Component]
+        RPC_Client[RPC Client]
+        LiveKit_Client[LiveKit Client SDK]
+    end
+    
+    subgraph "LiveKit Server"
+        WebRTC[WebRTC Connection]
+        RPC_Server[RPC Server]
+    end
+    
+    subgraph "Python Agent"
+        STT[Speech-to-Text]
+        LLM[Language Model]
+        TTS[Text-to-Speech]
+        Tools[Tool Definitions]
+        RPC_Agent[RPC Client]
+        Agent_LiveKit[LiveKit Agent SDK]
+    end
+    
+    PTT -->|Audio Stream| LiveKit_Client
+    LiveKit_Client <-->|WebRTC| WebRTC
+    WebRTC <-->|WebRTC| Agent_LiveKit
+    Agent_LiveKit -->|Audio| STT
+    STT -->|Text| LLM
+    LLM -->|Tool Calls| Tools
+    Tools -->|RPC Calls| RPC_Agent
+    RPC_Agent <-->|RPC| RPC_Server
+    RPC_Server <-->|RPC| RPC_Client
+    RPC_Client -->|State Updates| UI
+    LLM -->|Response| TTS
+    TTS -->|Audio| Agent_LiveKit
+    Agent_LiveKit -->|Audio Stream| WebRTC
+    WebRTC -->|Audio| LiveKit_Client
+    LiveKit_Client -->|Playback| UI
+    
+    UI --> Quiz
+    UI --> Table
+    UI --> Blank
+```
+
+### Architecture Components
 
 - **Frontend**: Next.js 14+ with React, TypeScript, Tailwind CSS
 - **Agent**: Python agent using LiveKit Agents SDK
