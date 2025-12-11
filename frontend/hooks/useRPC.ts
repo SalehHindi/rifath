@@ -20,7 +20,22 @@ export function useRPC(room: Room | null) {
     // Register set_mode RPC method
     const setModeHandler = async (request: any) => {
       try {
-        const { mode } = request.payload as { mode: string };
+        // Parse payload - LiveKit RPC payloads are strings, so we need to parse JSON
+        let payload: { mode?: string };
+        if (typeof request.payload === "string") {
+          payload = JSON.parse(request.payload);
+        } else {
+          payload = request.payload;
+        }
+        
+        const { mode } = payload;
+        
+        if (!mode) {
+          return {
+            success: false,
+            error: "Missing 'mode' parameter",
+          };
+        }
         
         // Validate mode
         const validModes: UIMode[] = ["blank", "quiz", "table", "placeholder"];
@@ -34,29 +49,31 @@ export function useRPC(room: Room | null) {
         // Update mode
         setMode(mode as UIMode);
         
-        return { success: true, mode };
+        // Return JSON string (LiveKit expects string response)
+        return JSON.stringify({ success: true, mode });
       } catch (error) {
         console.error("Error in set_mode RPC:", error);
-        return {
+        return JSON.stringify({
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
-        };
+        });
       }
     };
 
     // Register get_mode RPC method
-    const getModeHandler = async () => {
+    const getModeHandler = async (_request: any) => {
       try {
-        return {
+        // Return JSON string (LiveKit expects string response)
+        return JSON.stringify({
           success: true,
           mode: currentModeRef.current,
-        };
+        });
       } catch (error) {
         console.error("Error in get_mode RPC:", error);
-        return {
+        return JSON.stringify({
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
-        };
+        });
       }
     };
 
